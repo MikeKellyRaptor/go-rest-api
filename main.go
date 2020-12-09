@@ -27,10 +27,6 @@ var events = allEvents{
 	},
 }
 
-func homeLink(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprintf(w, "Welcome home buddy!")
-}
-
 func createEvent(w http.ResponseWriter, r *http.Request) {
 	var newEvent event
 	reqBody, err := ioutil.ReadAll(r.Body)
@@ -84,16 +80,33 @@ func updateEvent(w http.ResponseWriter, r *http.Request) {
 	}
 	if len(singleEventID) == 0 {
 		w.WriteHeader(http.StatusNotFound)
-		fmt.Fprintf(w, "No record found with id => "+eventID)
+		fmt.Fprintf(w, "No record found with id => %v", eventID)
+	}
+}
+
+func deleteEvent(w http.ResponseWriter, r *http.Request) {
+	eventID := mux.Vars(r)["id"]
+	var deletedEventID string
+
+	for i, singleEvent := range events {
+		if singleEvent.ID == eventID {
+			events = append(events[:i], events[i+1:]...)
+			fmt.Fprintf(w, "Record id => %v deleted", eventID)
+			deletedEventID = singleEvent.ID
+		}
+	}
+	if len(deletedEventID) == 0 {
+		w.WriteHeader(http.StatusNotFound)
+		fmt.Fprintf(w, "No record found with id => %v - cannot delete!", eventID)
 	}
 }
 
 func main() {
 	router := mux.NewRouter().StrictSlash(true)
-	router.HandleFunc("/", homeLink)
-	router.HandleFunc("/event", createEvent)
-	router.HandleFunc("/event/{id}", getOneEvent)
-	router.HandleFunc("/events", getAllEvents)
-	router.HandleFunc("/update/{id}", updateEvent)
+	router.HandleFunc("/event", createEvent).Methods("POST")
+	router.HandleFunc("/event/{id}", getOneEvent).Methods("GET")
+	router.HandleFunc("/events", getAllEvents).Methods("GET")
+	router.HandleFunc("/events/{id}", updateEvent).Methods("PATCH")
+	router.HandleFunc("/events/{id}", deleteEvent).Methods("DELETE")
 	log.Fatal(http.ListenAndServe(":8080", router))
 }
